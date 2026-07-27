@@ -1,10 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Domain.Entities;
 using System.Data;
+using Application.Interfaces;
 
 namespace Infrastructure.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
