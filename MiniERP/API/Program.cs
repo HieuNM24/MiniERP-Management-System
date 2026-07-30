@@ -21,6 +21,7 @@ builder.Services.AddScoped<IApplicationDbContext>(provider =>
 builder.Services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
 
 // 3. Cấu hình JWT Authentication
 var secretKey = builder.Configuration["JwtSettings:Secret"]
@@ -45,17 +46,21 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
 // 4. Cấu hình Swagger để hỗ trợ bấm Nút Authorize Token
+// Cấu hình Swagger để tự động thêm chữ Bearer vào Header
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "MiniERP API", Version = "v1" });
+
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Nhập Token theo dạng: Bearer {chuỗi_token_của_bạn}",
+        Description = "Chỉ cần dán chuỗi Token vào đây (KHÔNG cần gõ từ Bearer):",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Type = SecuritySchemeType.Http, // <--- Đổi sang Http
+        Scheme = "bearer",              // <--- Swagger sẽ tự đính kèm "Bearer "
+        BearerFormat = "JWT"
     });
+
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {

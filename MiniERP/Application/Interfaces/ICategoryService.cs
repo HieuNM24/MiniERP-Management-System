@@ -1,0 +1,12 @@
+﻿using Application.DTOs.Category;
+
+namespace Application.Interfaces;
+
+public interface ICategoryService
+{
+    Task<IEnumerable<CategoryDto>> GetAllAsync();
+    Task<CategoryDto?> GetByIdAsync(int id);
+    Task<CategoryDto> CreateAsync(CreateUpdateCategoryDto dto);
+    Task<bool> UpdateAsync(int id, CreateUpdateCategoryDto dto);
+    Task<bool> DeleteAsync(int id);
+}
