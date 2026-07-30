@@ -53,4 +53,20 @@ public class OrderController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Admin,InventoryManager")]
+    public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusDto dto)
+    {
+        try
+        {
+            var success = await _orderService.UpdateStatusAsync(id, dto.Status);
+            if (!success) return NotFound(new { message = "Không tìm thấy đơn hàng!" });
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }

@@ -134,4 +134,36 @@ public class OrderService : IOrderService
             }).ToList()
         };
     }
+
+    public async Task<bool> UpdateStatusAsync(int id, string status)
+    {
+        var order = await _context.Orders
+            .Include(o => o.OrderDetails)
+            .FirstOrDefaultAsync(o => o.OrderId == id);
+
+        if (order == null) return false;
+
+        string normalizedStatus = status.ToUpper();
+        if (normalizedStatus != "APPROVED" && normalizedStatus != "CANCELLED")
+            throw new Exception("Trạng thái không hợp lệ! Chỉ chấp nhận 'APPROVED' hoặc 'CANCELLED'.");
+
+        if (order.Status == normalizedStatus) return true;
+
+        // ⚠️ NGHIỆP VỤ HOÀN KHO: Nếu chuyển sang CANCELLED và đơn trước đó chưa bị hủy
+        if (normalizedStatus == "CANCELLED" && order.Status != "CANCELLED")
+        {
+            foreach (var detail in order.OrderDetails)
+            {
+                var product = await _context.Products.FindAsync(detail.ProductId);
+                if (product != null)
+                {
+                    product.StockQuantity += detail.Quantity; // Cộng trả lại số lượng vào kho
+                }
+            }
+        }
+
+        order.Status = normalizedStatus;
+        await _context.SaveChangesAsync();
+        return true;
+    }
 }
