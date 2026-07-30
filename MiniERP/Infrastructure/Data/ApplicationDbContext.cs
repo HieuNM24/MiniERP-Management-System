@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Application.Interfaces;
 using Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using System.Data;
-using Application.Interfaces;
+using System.Text.Json;
 
 namespace Infrastructure.Data;
 
@@ -19,6 +20,88 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderDetail> OrderDetails { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        OnBeforeSaveChanges();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void OnBeforeSaveChanges()
+    {
+        ChangeTracker.DetectChanges();
+        var auditEntries = new List<AuditLog>();
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            // Bỏ qua bảng AuditLog hoặc các Entity không có thay đổi
+            if (entry.Entity is AuditLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
+                continue;
+
+            var oldValues = new Dictionary<string, object?>();
+            var newValues = new Dictionary<string, object?>();
+            string tableName = entry.Entity.GetType().Name;
+            int? recordId = null;
+
+            foreach (var property in entry.Properties)
+            {
+                // 💡 Đã xóa dòng if(property.IsMetadataProperty) bị lỗi ở đây
+                string propertyName = property.Metadata.Name;
+
+                // Lấy ID/Primary Key của bản ghi nếu có
+                if (property.Metadata.IsPrimaryKey() && property.CurrentValue != null)
+                {
+                    if (int.TryParse(property.CurrentValue.ToString(), out int id))
+                    {
+                        recordId = id;
+                    }
+                }
+
+                // Tách giá trị Cũ & Mới dựa trên hành động
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        newValues[propertyName] = property.CurrentValue;
+                        break;
+
+                    case EntityState.Deleted:
+                        oldValues[propertyName] = property.OriginalValue;
+                        break;
+
+                    case EntityState.Modified:
+                        if (property.IsModified)
+                        {
+                            oldValues[propertyName] = property.OriginalValue;
+                            newValues[propertyName] = property.CurrentValue;
+                        }
+                        break;
+                }
+            }
+
+            var log = new AuditLog
+            {
+                Action = entry.State switch
+                {
+                    EntityState.Added => $"CREATE_{tableName.ToUpper()}",
+                    EntityState.Modified => $"UPDATE_{tableName.ToUpper()}",
+                    EntityState.Deleted => $"DELETE_{tableName.ToUpper()}",
+                    _ => entry.State.ToString().ToUpper()
+                },
+                TableName = tableName,
+                RecordId = recordId,
+                OldValues = oldValues.Count == 0 ? null : JsonSerializer.Serialize(oldValues),
+                NewValues = newValues.Count == 0 ? null : JsonSerializer.Serialize(newValues),
+                Timestamp = DateTime.UtcNow
+            };
+
+            auditEntries.Add(log);
+        }
+
+        if (auditEntries.Any())
+        {
+            AuditLogs.AddRange(auditEntries);
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
