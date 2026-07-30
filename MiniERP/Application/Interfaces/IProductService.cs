@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Application.DTOs.Product;
 
-namespace Application.Interfaces
+namespace Application.Interfaces;
+
+public interface IProductService
 {
-    internal interface IProductService
-    {
-    }
+    Task<IEnumerable<ProductDto>> GetAllAsync(string? search = null, int? categoryId = null);
+    Task<ProductDto?> GetByIdAsync(int id);
+    Task<ProductDto> CreateAsync(CreateUpdateProductDto dto);
+    Task<bool> UpdateAsync(int id, CreateUpdateProductDto dto);
+    Task<bool> DeleteAsync(int id);
 }

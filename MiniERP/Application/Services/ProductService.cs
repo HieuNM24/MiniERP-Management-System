@@ -18,7 +18,7 @@ public class ProductService : IProductService
     {
         var query = _context.Products.Include(p => p.Category).AsQueryable();
 
-        // 🔍 Lọc theo Từ khóa tìm kiếm (Tên sản phẩm hoặc Mã SKU)
+        // 🔍 Lọc theo Từ khóa (Tên sản phẩm hoặc SKU)
         if (!string.IsNullOrWhiteSpace(search))
         {
             query = query.Where(p => p.ProductName.Contains(search) || p.SKU.Contains(search));
@@ -35,7 +35,6 @@ public class ProductService : IProductService
             ProductId = p.ProductId,
             SKU = p.SKU,
             ProductName = p.ProductName,
-            Description = p.Description,
             UnitPrice = p.UnitPrice,
             StockQuantity = p.StockQuantity,
             CategoryId = p.CategoryId,
@@ -56,7 +55,6 @@ public class ProductService : IProductService
             ProductId = p.ProductId,
             SKU = p.SKU,
             ProductName = p.ProductName,
-            Description = p.Description,
             UnitPrice = p.UnitPrice,
             StockQuantity = p.StockQuantity,
             CategoryId = p.CategoryId,
@@ -79,7 +77,6 @@ public class ProductService : IProductService
         {
             SKU = dto.SKU,
             ProductName = dto.ProductName,
-            Description = dto.Description,
             UnitPrice = dto.UnitPrice,
             StockQuantity = dto.StockQuantity,
             CategoryId = dto.CategoryId,
@@ -94,7 +91,6 @@ public class ProductService : IProductService
             ProductId = product.ProductId,
             SKU = product.SKU,
             ProductName = product.ProductName,
-            Description = product.Description,
             UnitPrice = product.UnitPrice,
             StockQuantity = product.StockQuantity,
             CategoryId = product.CategoryId,
@@ -113,7 +109,6 @@ public class ProductService : IProductService
 
         product.SKU = dto.SKU;
         product.ProductName = dto.ProductName;
-        product.Description = dto.Description;
         product.UnitPrice = dto.UnitPrice;
         product.StockQuantity = dto.StockQuantity;
         product.CategoryId = dto.CategoryId;
