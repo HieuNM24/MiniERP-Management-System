@@ -1,6 +1,7 @@
 ﻿using Application.DTOs.Product;
 using Application.Interfaces;
 using Application.Services;
+using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,10 +20,16 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] int? categoryId)
+    public async Task<IActionResult> GetAll()
     {
         var result = await _productService.GetAllAsync(search, categoryId);
         return Ok(result);
+    }
+
+    [HttpGet]
+    public IActionResult GetAll()
+    {
+        return Ok(Products);
     }
 
     [HttpGet("{id}")]
