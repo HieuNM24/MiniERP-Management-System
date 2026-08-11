@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Application.Services;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
@@ -22,15 +23,11 @@ public class ProductController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _productService.GetAllAsync(search, categoryId);
+        var result = await _productService.GetAllAsync();
         return Ok(result);
     }
 
-    [HttpGet]
-    public IActionResult GetAll()
-    {
-        return Ok(Products);
-    }
+   
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
