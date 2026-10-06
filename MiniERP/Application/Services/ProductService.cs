@@ -36,7 +36,7 @@ public class ProductService : IProductService
             SKU = p.SKU,
             ProductName = p.ProductName,
             UnitPrice = p.UnitPrice,
-            StockQuantity = p.StockQuantity,
+            StockQuantity = _context.InventoryBalances.Where(b => b.ProductId == p.ProductId).Sum(b => (int?)b.Quantity) ?? 0,
             CategoryId = p.CategoryId,
             CategoryName = p.Category.CategoryName
         }).ToListAsync();
@@ -56,7 +56,7 @@ public class ProductService : IProductService
             SKU = p.SKU,
             ProductName = p.ProductName,
             UnitPrice = p.UnitPrice,
-            StockQuantity = p.StockQuantity,
+            StockQuantity = _context.InventoryBalances.Where(b => b.ProductId == p.ProductId).Sum(b => (int?)b.Quantity) ?? 0,
             CategoryId = p.CategoryId,
             CategoryName = p.Category.CategoryName
         };
@@ -78,7 +78,8 @@ public class ProductService : IProductService
             SKU = dto.SKU,
             ProductName = dto.ProductName,
             UnitPrice = dto.UnitPrice,
-            StockQuantity = dto.StockQuantity,
+            // InventoryBalance is the only inventory source of truth.
+            StockQuantity = 0,
             CategoryId = dto.CategoryId,
             CreatedAt = DateTime.UtcNow
         };
@@ -110,7 +111,6 @@ public class ProductService : IProductService
         product.SKU = dto.SKU;
         product.ProductName = dto.ProductName;
         product.UnitPrice = dto.UnitPrice;
-        product.StockQuantity = dto.StockQuantity;
         product.CategoryId = dto.CategoryId;
 
         await _context.SaveChangesAsync();

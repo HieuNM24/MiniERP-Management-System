@@ -26,6 +26,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 // 3. Cấu hình JWT Authentication
 var secretKey = builder.Configuration["JwtSettings:Secret"]

@@ -91,9 +91,6 @@ namespace Infrastructure.Migrations
                     b.Property<int>("CreatedBy")
                         .HasColumnType("int");
 
-                    b.Property<int>("CreatedByUserUserId")
-                        .HasColumnType("int");
-
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -118,7 +115,7 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("OrderId");
 
-                    b.HasIndex("CreatedByUserUserId");
+                    b.HasIndex("CreatedBy");
 
                     b.HasIndex("OrderCode")
                         .IsUnique();
@@ -158,6 +155,60 @@ namespace Infrastructure.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderDetails");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryBalance", b =>
+                {
+                    b.Property<int>("InventoryBalanceId").ValueGeneratedOnAdd().HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryBalanceId"));
+                    b.Property<int>("ProductId").HasColumnType("int");
+                    b.Property<int>("Quantity").HasColumnType("int");
+                    b.Property<byte[]>("RowVersion").IsConcurrencyToken().ValueGeneratedOnAddOrUpdate().HasColumnType("rowversion");
+                    b.Property<int>("WarehouseId").HasColumnType("int");
+                    b.HasKey("InventoryBalanceId");
+                    b.HasIndex("ProductId");
+                    b.HasIndex("WarehouseId", "ProductId").IsUnique();
+                    b.ToTable("InventoryBalances");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryLot", b =>
+                {
+                    b.Property<int>("InventoryLotId").ValueGeneratedOnAdd().HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryLotId"));
+                    b.Property<DateTime?>("ExpiryDate").HasColumnType("datetime2");
+                    b.Property<string>("LotNumber").IsRequired().HasColumnType("nvarchar(450)");
+                    b.Property<int>("ProductId").HasColumnType("int");
+                    b.Property<DateTime>("ReceivedAt").HasColumnType("datetime2");
+                    b.Property<int>("RemainingQuantity").HasColumnType("int");
+                    b.Property<byte[]>("RowVersion").IsConcurrencyToken().ValueGeneratedOnAddOrUpdate().HasColumnType("rowversion");
+                    b.Property<decimal>("UnitCost").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.Property<int>("WarehouseId").HasColumnType("int");
+                    b.HasKey("InventoryLotId");
+                    b.HasIndex("ProductId");
+                    b.HasIndex("WarehouseId");
+                    b.HasIndex("WarehouseId", "ProductId", "LotNumber").IsUnique();
+                    b.ToTable("InventoryLots");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.Property<int>("InventoryTransactionId").ValueGeneratedOnAdd().HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryTransactionId"));
+                    b.Property<DateTime>("CreatedAt").HasColumnType("datetime2");
+                    b.Property<int>("CreatedBy").HasColumnType("int");
+                    b.Property<int?>("InventoryLotId").HasColumnType("int");
+                    b.Property<int>("ProductId").HasColumnType("int");
+                    b.Property<int>("Quantity").HasColumnType("int");
+                    b.Property<string>("Reference").HasColumnType("nvarchar(max)");
+                    b.Property<string>("TransactionCode").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<string>("TransactionType").IsRequired().HasColumnType("nvarchar(max)");
+                    b.Property<decimal>("UnitCost").HasPrecision(18, 2).HasColumnType("decimal(18,2)");
+                    b.Property<int>("WarehouseId").HasColumnType("int");
+                    b.HasKey("InventoryTransactionId");
+                    b.HasIndex("InventoryLotId");
+                    b.HasIndex("ProductId");
+                    b.HasIndex("WarehouseId", "ProductId", "CreatedAt");
+                    b.ToTable("InventoryTransactions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Product", b =>
@@ -294,12 +345,25 @@ namespace Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Warehouse", b =>
+                {
+                    b.Property<int>("WarehouseId").ValueGeneratedOnAdd().HasColumnType("int");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WarehouseId"));
+                    b.Property<string>("Code").IsRequired().HasColumnType("nvarchar(450)");
+                    b.Property<bool>("IsActive").HasColumnType("bit");
+                    b.Property<string>("Name").IsRequired().HasColumnType("nvarchar(max)");
+                    b.HasKey("WarehouseId");
+                    b.HasIndex("Code").IsUnique();
+                    b.ToTable("Warehouses");
+                    b.HasData(new { WarehouseId = 1, Code = "MAIN", Name = "Kho chính", IsActive = true });
+                });
+
             modelBuilder.Entity("Domain.Entities.Order", b =>
                 {
                     b.HasOne("Domain.Entities.User", "CreatedByUser")
                         .WithMany("Orders")
-                        .HasForeignKey("CreatedByUserUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("CreatedByUser");
@@ -324,6 +388,28 @@ namespace Infrastructure.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("Domain.Entities.InventoryBalance", b =>
+                {
+                    b.HasOne("Domain.Entities.Product", "Product").WithMany().HasForeignKey("ProductId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("Domain.Entities.Warehouse", "Warehouse").WithMany("InventoryBalances").HasForeignKey("WarehouseId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("Product"); b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryLot", b =>
+                {
+                    b.HasOne("Domain.Entities.Product", "Product").WithMany().HasForeignKey("ProductId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("Domain.Entities.Warehouse", "Warehouse").WithMany().HasForeignKey("WarehouseId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("Product"); b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryTransaction", b =>
+                {
+                    b.HasOne("Domain.Entities.InventoryLot", "InventoryLot").WithMany().HasForeignKey("InventoryLotId").OnDelete(DeleteBehavior.Restrict);
+                    b.HasOne("Domain.Entities.Product", "Product").WithMany().HasForeignKey("ProductId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("Domain.Entities.Warehouse", "Warehouse").WithMany().HasForeignKey("WarehouseId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("InventoryLot"); b.Navigation("Product"); b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("Domain.Entities.Product", b =>
                 {
                     b.HasOne("Domain.Entities.Category", "Category")
@@ -344,6 +430,11 @@ namespace Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Warehouse", b =>
+                {
+                    b.Navigation("InventoryBalances");
                 });
 
             modelBuilder.Entity("Domain.Entities.Category", b =>

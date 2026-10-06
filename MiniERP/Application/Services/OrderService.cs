@@ -44,13 +44,6 @@ public class OrderService : IOrderService
             if (product == null)
                 throw new Exception($"Không tìm thấy sản phẩm có ID: {item.ProductId}");
 
-            // ⚠️ Kiểm tra số lượng tồn kho
-            if (product.StockQuantity < item.Quantity)
-                throw new Exception($"Sản phẩm '{product.ProductName}' chỉ còn {product.StockQuantity} trong kho (bạn đặt {item.Quantity})!");
-
-            // 📉 Trừ số lượng tồn kho
-            product.StockQuantity -= item.Quantity;
-
             // 💰 Tính tiền theo giá trong Database
             decimal lineTotal = product.UnitPrice * item.Quantity;
             calculatedTotal += lineTotal;
@@ -148,19 +141,6 @@ public class OrderService : IOrderService
             throw new Exception("Trạng thái không hợp lệ! Chỉ chấp nhận 'APPROVED' hoặc 'CANCELLED'.");
 
         if (order.Status == normalizedStatus) return true;
-
-        // ⚠️ NGHIỆP VỤ HOÀN KHO: Nếu chuyển sang CANCELLED và đơn trước đó chưa bị hủy
-        if (normalizedStatus == "CANCELLED" && order.Status != "CANCELLED")
-        {
-            foreach (var detail in order.OrderDetails)
-            {
-                var product = await _context.Products.FindAsync(detail.ProductId);
-                if (product != null)
-                {
-                    product.StockQuantity += detail.Quantity; // Cộng trả lại số lượng vào kho
-                }
-            }
-        }
 
         order.Status = normalizedStatus;
         await _context.SaveChangesAsync();

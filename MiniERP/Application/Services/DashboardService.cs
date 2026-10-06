@@ -27,18 +27,19 @@ public class DashboardService : IDashboardService
         var totalProducts = await _context.Products.CountAsync();
 
         // 3. Sản phẩm cảnh báo tồn kho thấp (<= 10)
-        var lowStockProducts = await _context.Products
-            .Include(p => p.Category)
-            .Where(p => p.StockQuantity <= 10)
-            .Select(p => new ProductDto
+        var lowStockProducts = await _context.InventoryBalances
+            .Include(x => x.Product).ThenInclude(p => p.Category)
+            .GroupBy(x => new { x.ProductId, x.Product.SKU, x.Product.ProductName, x.Product.UnitPrice, x.Product.CategoryId, x.Product.Category.CategoryName, x.Product.ReorderLevel })
+            .Where(g => g.Sum(x => x.Quantity) <= g.Key.ReorderLevel)
+            .Select(g => new ProductDto
             {
-                ProductId = p.ProductId,
-                SKU = p.SKU,
-                ProductName = p.ProductName,
-                UnitPrice = p.UnitPrice,
-                StockQuantity = p.StockQuantity,
-                CategoryId = p.CategoryId,
-                CategoryName = p.Category.CategoryName
+                ProductId = g.Key.ProductId,
+                SKU = g.Key.SKU,
+                ProductName = g.Key.ProductName,
+                UnitPrice = g.Key.UnitPrice,
+                StockQuantity = g.Sum(x => x.Quantity),
+                CategoryId = g.Key.CategoryId,
+                CategoryName = g.Key.CategoryName
             })
             .ToListAsync();
 

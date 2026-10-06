@@ -20,6 +20,10 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderDetail> OrderDetails { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<Warehouse> Warehouses { get; set; }
+    public DbSet<InventoryBalance> InventoryBalances { get; set; }
+    public DbSet<InventoryLot> InventoryLots { get; set; }
+    public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -34,6 +38,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
 
         foreach (var entry in ChangeTracker.Entries())
         {
+            if (entry.Entity is InventoryTransaction && entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException("Sổ giao dịch kho là bất biến; hãy tạo giao dịch đảo thay vì sửa hoặc xóa.");
+
             // Bỏ qua bảng AuditLog hoặc các Entity không có thay đổi
             if (entry.Entity is AuditLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                 continue;
@@ -124,6 +131,11 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .Property(od => od.SubTotal)
             .HasPrecision(18, 2);
 
+        modelBuilder.Entity<InventoryLot>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<InventoryTransaction>().Property(x => x.UnitCost).HasPrecision(18, 2);
+        modelBuilder.Entity<InventoryBalance>().Property(x => x.RowVersion).IsRowVersion();
+        modelBuilder.Entity<InventoryLot>().Property(x => x.RowVersion).IsRowVersion();
+
         // 2. Cấu hình Ràng buộc Khóa ngoại & Tên chỉ mục (Index) độc nhất
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Username)
@@ -141,11 +153,32 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
             .HasIndex(o => o.OrderCode)
             .IsUnique();
 
+        modelBuilder.Entity<Warehouse>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<InventoryBalance>().HasIndex(x => new { x.WarehouseId, x.ProductId }).IsUnique();
+        modelBuilder.Entity<InventoryLot>().HasIndex(x => new { x.WarehouseId, x.ProductId, x.LotNumber }).IsUnique();
+        modelBuilder.Entity<InventoryTransaction>().HasIndex(x => new { x.WarehouseId, x.ProductId, x.CreatedAt });
+
+        modelBuilder.Entity<InventoryBalance>().HasOne(x => x.Warehouse).WithMany(x => x.InventoryBalances).HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryBalance>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryLot>().HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryLot>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>().HasOne(x => x.Warehouse).WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>().HasOne(x => x.InventoryLot).WithMany().HasForeignKey(x => x.InventoryLotId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Order>()
+            .HasOne(x => x.CreatedByUser)
+            .WithMany(x => x.Orders)
+            .HasForeignKey(x => x.CreatedBy)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // 3. Seed dữ liệu mẫu ban đầu cho Vai trò (Roles)
         modelBuilder.Entity<Role>().HasData(
             new Role { RoleId = 1, RoleName = "Admin", Description = "Quản trị viên hệ thống" },
             new Role { RoleId = 2, RoleName = "InventoryManager", Description = "Quản lý kho" },
             new Role { RoleId = 3, RoleName = "Sales", Description = "Nhân viên kinh doanh" }
         );
+
+        modelBuilder.Entity<Warehouse>().HasData(new Warehouse { WarehouseId = 1, Code = "MAIN", Name = "Kho chính", IsActive = true });
     }
 }
